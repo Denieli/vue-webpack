@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #326B86;
+            color: #FFFFFF;
+            font: 14px Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+
+        #div1 {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            background: #222;
+            margin: 30px auto;
+            /*padding-top: 50px;*/
+        }
+
+
+        .son {
+            position: absolute;
+            left: 0px;
+            top: 0;
+            background: #008040;
+            height: 50px;
+            width: 50px;
+            border-radius: 50%;
+            filter: alpha(opacity=60);
+            opacity: 0.6;
+            z-index: 99;
+        }
+
+
+
+        #move {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: red;
+            filter: alpha(opacity=60);
+            border-radius: 50%;
+            opacity: 0.6;
+            cursor: move;
+            top: 195px;
+            left: 195px;
+        }
+
+        p {
+            width: 500px;
+            margin: 0 auto;
+            font-size: 14px;
+            line-height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <span id="timer">马上开始</span>
+    <div id="div1">
+        <div id="move"></div>
+    </div>
+    <p>游戏规则：鼠标移动到红色部分，拖动红块，避免碰到绿色部分，不要碰到黑色区域，坚持的时间越长你越牛X！是男人就至少坚持30秒，本游戏支持IE，Chrome，Firefox，safari等浏览器！
+    </p>
+    <!-- 创建小球 分析：top是0 left随机生成    但是left的值计算是随机left-小球的宽度 -->
+    <!-- 小球移动 分析： 获取小球当前偏移量+移动速度       反弹的话 小球偏移“后”+小球宽度如果大于页面宽度   移动速度*-1-->
+    <!-- 拖拽  分析：先确定当前鼠标当前x    移动的过程中产生了鼠标另一个x  然后后一个x减去上一个x  +小球偏移量  之后吧上一个x赋值为下一个x-->
+    <!-- 检查是否碰撞  先确定绿球的点  再确定红球的点  （偏移量+绿球的一半高或宽）    两者再用勾股定理运算  - ->
+    <!-- 时间计时    -->
+    <script>
+        (function () {
+
+            var game = {
+                time: document.getElementById("timer"),
+                redboll: document.getElementById("move"),
+                num: 0,
+                creatTimer:null,
+                bollValue: {
+                    outer: document.getElementById("div1"),
+                    iWidth: document.getElementById("div1").offsetWidth,
+                    iHeight: document.getElementById("div1").offsetHeight,
+                    iSpeedX: 10,
+                    iSpeedY: 10
+                },
+                init: function () {
+                    this.createBoll(this.bollValue);
+                    this.drag(this.bollValue);
+                    this.timerRun();
+                },
+                createBoll: function (obj) {
+                    self = this;
+                    function ball(obj) {
+                        this.ball = document.createElement("div");
+                        this.ball.className = "son";
+                        this.ball.style.top = "0px";
+                        this.iCurrentWidth = Math.floor(obj.iWidth * Math.random());
+                        obj.outer.appendChild(this.ball);
+                        this.iSpeedX = Math.floor(obj.iSpeedX * Math.random());
+                        this.iSpeedY = Math.floor(obj.iSpeedY * Math.random());
+                        this.iWidth = obj.iWidth;
+                        this.iHeight = obj.iHeight;
+                    }
+                    var b = new ball(obj);
+                    var current = b.iCurrentWidth - b.ball.offsetWidth;
+                    if (current < 0) {
+                        current = 0;
+                    }
+                    b.ball.style.left = current + "px";
+                    self.moveBoll(b, self.ball);
+
+                    this.creatTimer = setInterval(function () {
+                        var b = new ball(obj);
+                        var current = b.iCurrentWidth - b.ball.offsetWidth;
+                        if (current < 0) {
+                            current = 0;
+                        }
+                        b.ball.style.left = current + "px";
+                        self.moveBoll(b, self.redboll);
+                    }, 2000)
+
+
+                },
+                moveBoll: function (newball, redboll) {
+                    // 绿色小球移动   
+                    // 分析
+                    // 移动：偏移量+速度
+                    // 反弹：如果 当前移动后的距离 超出div的宽度  速度反弹
+
+                    var self = this;
+                    newball.ball.timer = setInterval(function () {
+                        self.check(newball, redboll);
+                        var newLeft = newball.ball.offsetLeft + newball.iSpeedX;
+                        var newTop = newball.ball.offsetTop + newball.iSpeedY;
+                        if (newLeft > newball.iWidth - newball.ball.offsetWidth) {
+                            newball.iSpeedX *= -1
+                        }
+                        if (newLeft < 0) {
+                            newball.iSpeedX *= -1
+                        }
+                        if (newTop > newball.iHeight - newball.ball.offsetHeight) {
+                            newball.iSpeedY *= -1
+                        }
+                        if (newTop < 0) {
+                            newball.iSpeedY *= -1
+                        }
+                        newball.ball.style.left = newLeft + "px";
+                        newball.ball.style.top = newTop + "px";
+                    }, 50)
+
+                },
+                check: function (newball, redboll) {
+
+                    // 分析：获取绿球的（偏移量x+一半的宽度）  和（偏移量y+一半的高度）
+                    // 获取红球的（偏移量x+一半的宽度）  和（偏移量y+一半的高度）
+                    // 确定了两个点后利用勾股定理
+                    var gbollX = newball.ball.offsetLeft + (newball.ball.offsetWidth / 2);
+                    var gbollY = newball.ball.offsetTop + (newball.ball.offsetHeight / 2);
+                    var rbollX = this.redboll.offsetLeft + (this.redboll.offsetWidth / 2);
+                    var rbollY = this.redboll.offsetTop + (this.redboll.offsetHeight / 2);
+
+                    dx = Math.abs(gbollX - rbollX);
+                    dy = Math.abs(gbollY - rbollY);
+                    var dis = Math.floor(Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2)));
+                    
+                    if (dis < 55) {
+                        this.cleartimer();
+                        alert('游戏结束la ! 共坚持' + this.num + '秒');
+                        window.location.reload();
+                       
+                        
+                    }
+                },
+                drag: function (obj) {
+                    self = this;
+                    this.redboll.onmousedown = function (e) {
+                        var pageX = e.pageX;
+                        var pageY = e.pageY;
+                        document.onmousemove = function (e) {
+                            var currentX = self.redboll.offsetLeft + (e.pageX - pageX);//球的偏移量+（鼠标移动后的x-鼠标移动前的x）
+                            var currentY = self.redboll.offsetTop + (e.pageY - pageY);
+                            self.redboll.style.left = currentX + "px";
+                            self.redboll.style.top = currentY + "px";
+
+                            pageX = e.pageX;                                     //将鼠标移动后的值保存
+                            pageY = e.pageY;
+
+                            if (self.redboll.offsetLeft + self.redboll.offsetWidth > obj.iWidth) {//球球超出边界值   球球的偏移量+球球的宽度
+                                self.cleartimer();
+                                alert('游戏结束 ! 共坚持' + self.num + '秒');
+                                window.location.reload();
+                            }
+                            if (self.redboll.offsetLeft < 0) {
+                                self.cleartimer();
+                                alert('游戏结束 ! 共坚持' + self.num + '秒');
+                                window.location.reload();
+                            }
+                            if (self.redboll.offsetHeight + self.redboll.offsetTop > obj.iHeight) {
+                                self.cleartimer();
+                                alert('游戏结束 ! 共坚持' + self.num + '秒');
+                                window.location.reload();
+                            }
+                            if (self.redboll.offsetTop < 0) {
+                                self.cleartimer();
+                                alert('游戏结束 ! 共坚持' + self.num + '秒');
+
+                                window.location.reload();
+                            }
+                        }
+                        self.redboll.onmouseup = function () {
+                           
+                            document.onmousemove = null;
+                        }
+                    }
+                },
+                timerRun: function () {
+                    var self = this;
+                    var time = setInterval(function () {
+                        self.num++;
+                        self.time.innerHTML = '已完成' + self.num + '秒';
+                    }, 1000);
+                },
+                cleartimer: function () {
+                    this.creatTimer=null;
+                    var div1=document.getElementById("div1");
+                    var child=div1.getElementsByClassName("son");
+                 
+                    for(var i=0;i<child;i++){
+                        clearInterval(child[i]);
+                    }
+                }
+
+
+            }
+            game.init();
+        })()
+// 我的问题1：onclick  setInterVal里的this需不需要在外部重新定义值  算闭包吗？？？？？
+//我的问题2：  var child=div1.getElementsByClassName("son")  这个是数组  能用foreach遍历吗？
+    </script>
+</body>
+
+</html>
